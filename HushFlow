@@ -1,0 +1,1345 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+void main() {
+  runApp(
+    ChangeNotifierProvider<UserData>(
+      create: (BuildContext context) => UserData(),
+      builder: (BuildContext context, Widget? child) => const ScamBlockerApp(),
+    ),
+  );
+}
+
+// DATA_MODEL
+class UserData extends ChangeNotifier {
+  String _name;
+  String _email;
+  // In a real application, passwords should never be stored in plain text.
+  // They should be hashed and securely stored, and authentication
+  // would involve a backend service. For this exercise, it's stored for
+  // demonstration of the 'Change Password' feature.
+  String _password;
+
+  UserData({String name = '', String email = '', String password = ''})
+      : _name = name,
+        _email = email,
+        _password = password;
+
+  String get name => _name;
+  String get email => _email;
+
+  // Method to simulate user login
+  // For this exercise, it assumes login is successful if any email/password is provided.
+  // In a real app, this would validate against stored credentials.
+  void login(String email, String password) {
+    _email = email;
+    _password = password;
+    // _name is intentionally not set here. It's assumed to persist from a previous signup
+    // or remain empty if no signup occurred for this session.
+    notifyListeners();
+  }
+
+  // Method to simulate user signup
+  void signup(String name, String email, String password) {
+    _name = name;
+    _email = email;
+    _password = password;
+    notifyListeners();
+  }
+
+  // Method to change the user's password
+  bool changePassword(String currentPassword, String newPassword) {
+    if (_password == currentPassword) {
+      _password = newPassword;
+      notifyListeners();
+      return true;
+    }
+    return false;
+  }
+
+  // Method to update user's name and email
+  void updateProfile(String newName, String newEmail) {
+    _name = newName;
+    _email = newEmail;
+    notifyListeners();
+  }
+
+  // Method to simulate user logout
+  void logout() {
+    // Keep the name when logging out so it persists across login/logout cycles,
+    // reflecting the name used during account creation.
+    _email = '';
+    _password = '';
+    notifyListeners();
+  }
+}
+
+class ScamBlockerApp extends StatelessWidget {
+  const ScamBlockerApp({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'HushFlow',
+      theme: ThemeData(
+        primarySwatch: Colors.cyan,
+        scaffoldBackgroundColor: Colors.white,
+      ),
+      home: const AuthPage(),
+      debugShowCheckedModeBanner: false,
+    );
+  }
+}
+
+// Auth Page for Login/Signup
+class AuthPage extends StatefulWidget {
+  const AuthPage({Key? key}) : super(key: key);
+
+  @override
+  State<AuthPage> createState() => _AuthPageState();
+}
+
+class _AuthPageState extends State<AuthPage> {
+  bool isLogin = true;
+  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _nameController = TextEditingController();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24.0),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: <Widget>[
+                const SizedBox(height: 60),
+                // Shield Icon
+                Container(
+                  width: 120,
+                  height: 120,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1E3A5F),
+                    borderRadius: BorderRadius.circular(60),
+                  ),
+                  child: const Icon(
+                    Icons.shield_outlined,
+                    size: 60,
+                    color: Colors.cyan,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Text(
+                  'HushFlow',
+                  style: TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.cyan[700],
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  isLogin ? 'Welcome Back' : 'Create Account',
+                  style: TextStyle(
+                    fontSize: 18,
+                    color: Colors.grey[600],
+                  ),
+                ),
+                const SizedBox(height: 40),
+                // Name Field (only for signup)
+                if (!isLogin)
+                  TextFormField(
+                    controller: _nameController,
+                    decoration: InputDecoration(
+                      labelText: 'Full Name',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      prefixIcon: const Icon(Icons.person_outline),
+                    ),
+                    validator: (String? value) {
+                      if (!isLogin && (value == null || value.isEmpty)) {
+                        return 'Please enter your name';
+                      }
+                      return null;
+                    },
+                  ),
+                if (!isLogin) const SizedBox(height: 16),
+                // Email Field
+                TextFormField(
+                  controller: _emailController,
+                  decoration: InputDecoration(
+                    labelText: 'Email',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    prefixIcon: const Icon(Icons.email_outlined),
+                  ),
+                  keyboardType: TextInputType.emailAddress,
+                  validator: (String? value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter your email';
+                    }
+                    if (!value.contains('@')) {
+                      return 'Please enter a valid email';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+                // Password Field
+                TextFormField(
+                  controller: _passwordController,
+                  decoration: InputDecoration(
+                    labelText: 'Password',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    prefixIcon: const Icon(Icons.lock_outline),
+                  ),
+                  obscureText: true,
+                  validator: (String? value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter your password';
+                    }
+                    if (!isLogin && value.length < 6) {
+                      return 'Password must be at least 6 characters';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 24),
+                // Login/Signup Button
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      if (_formKey.currentState!.validate()) {
+                        final UserData userData =
+                            context.read<UserData>(); // Access UserData model
+                        if (isLogin) {
+                          userData.login(
+                            _emailController.text,
+                            _passwordController.text,
+                          );
+                        } else {
+                          userData.signup(
+                            _nameController.text,
+                            _emailController.text,
+                            _passwordController.text,
+                          );
+                        }
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute<void>(
+                            builder: (BuildContext context) => const HomePage(),
+                          ),
+                        );
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.cyan[600],
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: Text(
+                      isLogin ? 'Login' : 'Sign Up',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // Toggle Login/Signup
+                TextButton(
+                  onPressed: () {
+                    setState(() {
+                      isLogin = !isLogin;
+                      // Clear fields when toggling
+                      _nameController.clear();
+                      _emailController.clear();
+                      _passwordController.clear();
+                    });
+                  },
+                  child: Text(
+                    isLogin
+                        ? 'Don\'t have an account? Sign Up'
+                        : 'Already have an account? Login',
+                    style: TextStyle(color: Colors.cyan[700]),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    _nameController.dispose();
+    super.dispose();
+  }
+}
+
+// Home Page
+class HomePage extends StatefulWidget {
+  const HomePage({Key? key}) : super(key: key);
+
+  @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  bool isProtectionEnabled = true;
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      key: _scaffoldKey,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.menu, color: Colors.black),
+          onPressed: () {
+            _scaffoldKey.currentState?.openDrawer();
+          },
+        ),
+        actions: <Widget>[
+          IconButton(
+            icon: const Icon(Icons.account_circle, color: Colors.black),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute<void>(
+                    builder: (BuildContext context) => const ProfilePage()),
+              );
+            },
+          ),
+        ],
+      ),
+      drawer: const AppDrawer(),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: <Widget>[
+            // Shield Icon with Glow Effect
+            Stack(
+              alignment: Alignment.center,
+              children: <Widget>[
+                if (isProtectionEnabled)
+                  Container(
+                    width: 280,
+                    height: 280,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.cyan.withOpacity(0.1),
+                    ),
+                  ),
+                Container(
+                  width: 180,
+                  height: 180,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1E3A5F),
+                    borderRadius: BorderRadius.circular(90),
+                    boxShadow: <BoxShadow>[
+                      BoxShadow(
+                        color: const Color(0xFF1E3A5F).withOpacity(0.3),
+                        blurRadius: 20,
+                        spreadRadius: 5,
+                      ),
+                    ],
+                  ),
+                  child: Icon(
+                    isProtectionEnabled ? Icons.check : Icons.block,
+                    size: 80,
+                    color: Colors.cyan,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 40),
+            // Status Text
+            Text(
+              isProtectionEnabled ? '100% Protected' : 'Disabled',
+              style: TextStyle(
+                fontSize: 32,
+                fontWeight: FontWeight.bold,
+                color: isProtectionEnabled ? Colors.cyan[600] : Colors.grey,
+              ),
+            ),
+            const SizedBox(height: 60),
+            // Toggle Switch
+            GestureDetector(
+              onTap: () {
+                setState(() {
+                  isProtectionEnabled = !isProtectionEnabled;
+                });
+              },
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                width: 280,
+                height: 70,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(35),
+                  gradient: LinearGradient(
+                    colors: isProtectionEnabled
+                        ? <Color>[Colors.cyan[400]!, Colors.cyan[700]!]
+                        : <Color>[Colors.grey[400]!, Colors.grey[600]!],
+                  ),
+                ),
+                child: Stack(
+                  children: <Widget>[
+                    AnimatedPositioned(
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeIn,
+                      left: isProtectionEnabled ? 200 : 10,
+                      child: Container(
+                        width: 50,
+                        height: 50,
+                        margin: const EdgeInsets.all(10),
+                        decoration: const BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.white,
+                        ),
+                        child: Icon(
+                          isProtectionEnabled ? Icons.check : Icons.close,
+                          color:
+                              isProtectionEnabled ? Colors.cyan : Colors.grey,
+                        ),
+                      ),
+                    ),
+                    Positioned.fill(
+                      child: Align(
+                        alignment: isProtectionEnabled
+                            ? Alignment.centerLeft
+                            : Alignment.centerRight,
+                        child: Padding(
+                          padding: EdgeInsets.only(
+                              left: isProtectionEnabled ? 20 : 0,
+                              right: isProtectionEnabled ? 0 : 20),
+                          child: Text(
+                            isProtectionEnabled ? 'Enabled' : 'Disabled',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 18,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// Drawer Menu
+class AppDrawer extends StatelessWidget {
+  const AppDrawer({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Drawer(
+      child: Column(
+        children: <Widget>[
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(20),
+            color: Colors.cyan[600],
+            child: SafeArea(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: const <Widget>[
+                  Text(
+                    'Options',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const Divider(height: 1),
+          ListTile(
+            leading: Icon(Icons.settings_outlined, color: Colors.cyan[700]),
+            title: const Text('Settings'),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute<void>(
+                    builder: (BuildContext context) => const SettingsPage()),
+              );
+            },
+          ),
+          ListTile(
+            leading: Icon(Icons.block_outlined, color: Colors.cyan[700]),
+            title: const Text('Blocked numbers'),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute<void>(
+                    builder: (BuildContext context) =>
+                        const BlockedNumbersPage()),
+              );
+            },
+          ),
+          ListTile(
+            leading: Icon(Icons.flag_outlined, color: Colors.cyan[700]),
+            title: const Text('Flagged numbers'),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute<void>(
+                    builder: (BuildContext context) =>
+                        const FlaggedNumbersPage()),
+              );
+            },
+          ),
+          const Divider(),
+          ListTile(
+            leading: Icon(Icons.message_outlined, color: Colors.cyan[700]),
+            title: const Text('Blocked messages'),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute<void>(
+                    builder: (BuildContext context) =>
+                        const BlockedMessagesPage()),
+              );
+            },
+          ),
+          ListTile(
+            leading: Icon(Icons.flag_outlined, color: Colors.cyan[700]),
+            title: const Text('Flagged messages'),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute<void>(
+                    builder: (BuildContext context) =>
+                        const FlaggedMessagesPage()),
+              );
+            },
+          ),
+          ListTile(
+            leading: Icon(Icons.report_outlined, color: Colors.cyan[700]),
+            title: const Text('Report a Problem'),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute<void>(
+                    builder: (BuildContext context) =>
+                        const ReportProblemPage()),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// Settings Page
+class SettingsPage extends StatefulWidget {
+  const SettingsPage({Key? key}) : super(key: key);
+
+  @override
+  State<SettingsPage> createState() => _SettingsPageState();
+}
+
+class _SettingsPageState extends State<SettingsPage> {
+  bool enableNotifications = true;
+  bool autoBlock = true;
+  bool blockUnknown = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Settings', style: TextStyle(color: Colors.black)),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.black),
+      ),
+      body: ListView(
+        children: <Widget>[
+          SwitchListTile(
+            title: const Text('Enable Notifications'),
+            subtitle: const Text('Get alerts for blocked calls'),
+            value: enableNotifications,
+            activeColor: Colors.cyan[600],
+            onChanged: (bool value) {
+              setState(() {
+                enableNotifications = value;
+              });
+            },
+          ),
+          SwitchListTile(
+            title: const Text('Auto Block'),
+            subtitle: const Text('Automatically block known scam numbers'),
+            value: autoBlock,
+            activeColor: Colors.cyan[600],
+            onChanged: (bool value) {
+              setState(() {
+                autoBlock = value;
+              });
+            },
+          ),
+          SwitchListTile(
+            title: const Text('Block Unknown Numbers'),
+            subtitle: const Text('Block calls from numbers not in contacts'),
+            value: blockUnknown,
+            activeColor: Colors.cyan[600],
+            onChanged: (bool value) {
+              setState(() {
+                blockUnknown = value;
+              });
+            },
+          ),
+          const Divider(),
+          ListTile(
+            title: const Text('About'),
+            leading: const Icon(Icons.info_outline),
+            onTap: () {
+              showDialog<void>(
+                context: context,
+                builder: (BuildContext context) => AlertDialog(
+                  title: const Text('About HushFlow'),
+                  content: const Text(
+                      'Version 1.0.0\n\nProtect yourself from scam calls and messages.'),
+                  actions: <Widget>[
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('OK'),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// Blocked Numbers Page
+class BlockedNumbersPage extends StatefulWidget {
+  const BlockedNumbersPage({Key? key}) : super(key: key);
+
+  @override
+  State<BlockedNumbersPage> createState() => _BlockedNumbersPageState();
+}
+
+class _BlockedNumbersPageState extends State<BlockedNumbersPage> {
+  final List<Map<String, String>> blockedNumbers = <Map<String, String>>[
+    {'number': '+1 (555) 123-4567', 'date': 'Blocked today'},
+    {'number': '+1 (555) 987-6543', 'date': 'Blocked yesterday'},
+    {'number': '+1 (555) 555-5555', 'date': 'Blocked 3 days ago'},
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Blocked Numbers',
+            style: TextStyle(color: Colors.black)),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.black),
+      ),
+      body: ListView.builder(
+        itemCount: blockedNumbers.length,
+        itemBuilder: (BuildContext context, int index) {
+          return ListTile(
+            leading: CircleAvatar(
+              backgroundColor: Colors.red[100],
+              child: Icon(Icons.block, color: Colors.red[700]),
+            ),
+            title: Text(blockedNumbers[index]['number']!),
+            subtitle: Text(blockedNumbers[index]['date']!),
+            trailing: IconButton(
+              icon: const Icon(Icons.delete_outline),
+              onPressed: () {
+                setState(() {
+                  blockedNumbers.removeAt(index);
+                });
+              },
+            ),
+          );
+        },
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          _showAddNumberDialog(context);
+        },
+        backgroundColor: Colors.cyan[600],
+        child: const Icon(Icons.add),
+      ),
+    );
+  }
+
+  void _showAddNumberDialog(BuildContext context) {
+    final TextEditingController controller = TextEditingController();
+    showDialog<void>(
+      context: context,
+      builder: (BuildContext context) => AlertDialog(
+        title: const Text('Add Number to Block'),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(
+            labelText: 'Phone Number',
+            hintText: '+1 (555) 123-4567',
+          ),
+          keyboardType: TextInputType.phone,
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              if (controller.text.isNotEmpty) {
+                setState(() {
+                  blockedNumbers.insert(0, <String, String>{
+                    'number': controller.text,
+                    'date': 'Blocked today',
+                  });
+                });
+                Navigator.pop(context);
+              }
+            },
+            child: const Text('Add'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// Flagged Numbers Page
+class FlaggedNumbersPage extends StatelessWidget {
+  const FlaggedNumbersPage({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    final List<Map<String, String>> flaggedNumbers = <Map<String, String>>[
+      {'number': '+1 (555) 111-2222', 'reason': 'Suspicious activity'},
+      {'number': '+1 (555) 333-4444', 'reason': 'Reported as scam'},
+    ];
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Flagged Numbers',
+            style: TextStyle(color: Colors.black)),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.black),
+      ),
+      body: ListView.builder(
+        itemCount: flaggedNumbers.length,
+        itemBuilder: (BuildContext context, int index) {
+          return ListTile(
+            leading: CircleAvatar(
+              backgroundColor: Colors.orange[100],
+              child: Icon(Icons.flag, color: Colors.orange[700]),
+            ),
+            title: Text(flaggedNumbers[index]['number']!),
+            subtitle: Text(flaggedNumbers[index]['reason']!),
+          );
+        },
+      ),
+    );
+  }
+}
+
+// Blocked Messages Page
+class BlockedMessagesPage extends StatelessWidget {
+  const BlockedMessagesPage({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    final List<Map<String, String>> messages = <Map<String, String>>[
+      {
+        'sender': '+1 (555) 999-8888',
+        'preview': 'Congratulations! You\'ve won...',
+        'date': 'Today'
+      },
+      {
+        'sender': 'Unknown',
+        'preview': 'Click here to claim your prize',
+        'date': 'Yesterday'
+      },
+    ];
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Blocked Messages',
+            style: TextStyle(color: Colors.black)),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.black),
+      ),
+      body: ListView.builder(
+        itemCount: messages.length,
+        itemBuilder: (BuildContext context, int index) {
+          return ListTile(
+            leading: CircleAvatar(
+              backgroundColor: Colors.red[100],
+              child: Icon(Icons.message, color: Colors.red[700]),
+            ),
+            title: Text(messages[index]['sender']!),
+            subtitle: Text(
+              messages[index]['preview']!,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            trailing: Text(messages[index]['date']!),
+          );
+        },
+      ),
+    );
+  }
+}
+
+// Flagged Messages Page
+class FlaggedMessagesPage extends StatelessWidget {
+  const FlaggedMessagesPage({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Flagged Messages',
+            style: TextStyle(color: Colors.black)),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.black),
+      ),
+      body: const Center(
+        child: Text('No flagged messages'),
+      ),
+    );
+  }
+}
+
+// Report Problem Page
+class ReportProblemPage extends StatefulWidget {
+  const ReportProblemPage({Key? key}) : super(key: key);
+
+  @override
+  State<ReportProblemPage> createState() => _ReportProblemPageState();
+}
+
+class _ReportProblemPageState extends State<ReportProblemPage> {
+  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+  final TextEditingController _descriptionController = TextEditingController();
+  String selectedCategory = 'Bug Report';
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Report a Problem',
+            style: TextStyle(color: Colors.black)),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.black),
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16.0),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              const Text(
+                'Category',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              DropdownButtonFormField<String>(
+                value: selectedCategory,
+                decoration: InputDecoration(
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                items: <String>['Bug Report', 'Feature Request', 'Other']
+                    .map<DropdownMenuItem<String>>((String category) =>
+                        DropdownMenuItem<String>(
+                          value: category,
+                          child: Text(category),
+                        ))
+                    .toList(),
+                onChanged: (String? value) {
+                  setState(() {
+                    selectedCategory = value!;
+                  });
+                },
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                'Description',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              TextFormField(
+                controller: _descriptionController,
+                decoration: InputDecoration(
+                  hintText: 'Describe the problem...',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                maxLines: 6,
+                validator: (String? value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please describe the problem';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton(
+                  onPressed: () {
+                    if (_formKey.currentState!.validate()) {
+                      showDialog<void>(
+                        context: context,
+                        builder: (BuildContext context) => AlertDialog(
+                          title: const Text('Thank You!'),
+                          content: const Text(
+                              'Your report has been submitted successfully.'),
+                          actions: <Widget>[
+                            TextButton(
+                              onPressed: () {
+                                Navigator.pop(context);
+                                Navigator.pop(context);
+                              },
+                              child: const Text('OK'),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.cyan[600],
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text(
+                    'Submit Report',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _descriptionController.dispose();
+    super.dispose();
+  }
+}
+
+// Profile Page
+class ProfilePage extends StatelessWidget {
+  const ProfilePage({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    final UserData userData =
+        context.watch<UserData>(); // Watch UserData changes
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Profile', style: TextStyle(color: Colors.black)),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.black),
+      ),
+      body: ListView(
+        children: <Widget>[
+          const SizedBox(height: 20),
+          const CircleAvatar(
+            radius: 60,
+            backgroundColor: Color(0xFF1E3A5F),
+            child: Icon(Icons.person, size: 60, color: Colors.cyan),
+          ),
+          const SizedBox(height: 16),
+          Center(
+            child: Text(
+              // Display the user's name if available, otherwise 'Guest User'.
+              // The name is now retained in UserData even after logout.
+              userData.name.isNotEmpty ? userData.name : 'Guest User',
+              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            ),
+          ),
+          Center(
+            child: Text(
+              userData.email.isNotEmpty ? userData.email : 'guest@example.com',
+              style: const TextStyle(color: Colors.grey),
+            ),
+          ),
+          const SizedBox(height: 30),
+          ListTile(
+            leading: const Icon(Icons.edit),
+            title: const Text('Edit Profile'),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute<void>(
+                    builder: (BuildContext context) =>
+                        const EditProfilePage()), // Navigate to EditProfilePage
+              );
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.lock_outline),
+            title: const Text('Change Password'),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute<void>(
+                    builder: (BuildContext context) =>
+                        const ChangePasswordPage()),
+              );
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.logout),
+            title: const Text('Logout'),
+            onTap: () {
+              // Call logout method on UserData
+              context.read<UserData>().logout();
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute<void>(
+                    builder: (BuildContext context) => const AuthPage()),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// Change Password Page
+class ChangePasswordPage extends StatefulWidget {
+  const ChangePasswordPage({Key? key}) : super(key: key);
+
+  @override
+  State<ChangePasswordPage> createState() => _ChangePasswordPageState();
+}
+
+class _ChangePasswordPageState extends State<ChangePasswordPage> {
+  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+  final TextEditingController _currentPasswordController =
+      TextEditingController();
+  final TextEditingController _newPasswordController = TextEditingController();
+  final TextEditingController _confirmNewPasswordController =
+      TextEditingController();
+
+  @override
+  Widget build(BuildContext context) {
+    final UserData userData =
+        context.read<UserData>(); // Access UserData for actions
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Change Password',
+            style: TextStyle(color: Colors.black)),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.black),
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16.0),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              TextFormField(
+                controller: _currentPasswordController,
+                decoration: InputDecoration(
+                  labelText: 'Current Password',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  prefixIcon: const Icon(Icons.lock_outline),
+                ),
+                obscureText: true,
+                validator: (String? value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter your current password';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _newPasswordController,
+                decoration: InputDecoration(
+                  labelText: 'New Password',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  prefixIcon: const Icon(Icons.lock),
+                ),
+                obscureText: true,
+                validator: (String? value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter a new password';
+                  }
+                  if (value.length < 6) {
+                    return 'Password must be at least 6 characters';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _confirmNewPasswordController,
+                decoration: InputDecoration(
+                  labelText: 'Confirm New Password',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  prefixIcon: const Icon(Icons.lock),
+                ),
+                obscureText: true,
+                validator: (String? value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please confirm your new password';
+                  }
+                  if (value != _newPasswordController.text) {
+                    return 'Passwords do not match';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton(
+                  onPressed: () {
+                    if (_formKey.currentState!.validate()) {
+                      final bool success = userData.changePassword(
+                        _currentPasswordController.text,
+                        _newPasswordController.text,
+                      );
+                      if (success) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                              content: Text('Password changed successfully!')),
+                        );
+                        Navigator.pop(context); // Go back to profile page
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                              content: Text('Incorrect current password.')),
+                        );
+                      }
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.cyan[600],
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text(
+                    'Change Password',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _currentPasswordController.dispose();
+    _newPasswordController.dispose();
+    _confirmNewPasswordController.dispose();
+    super.dispose();
+  }
+}
+
+// Edit Profile Page
+class EditProfilePage extends StatefulWidget {
+  const EditProfilePage({Key? key}) : super(key: key);
+
+  @override
+  State<EditProfilePage> createState() => _EditProfilePageState();
+}
+
+class _EditProfilePageState extends State<EditProfilePage> {
+  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+  late TextEditingController _nameController;
+  late TextEditingController _emailController;
+
+  @override
+  void initState() {
+    super.initState();
+    final UserData userData = context.read<UserData>();
+    _nameController = TextEditingController(text: userData.name);
+    _emailController = TextEditingController(text: userData.email);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Edit Profile', style: TextStyle(color: Colors.black)),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.black),
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16.0),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              TextFormField(
+                controller: _nameController,
+                decoration: InputDecoration(
+                  labelText: 'Full Name',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  prefixIcon: const Icon(Icons.person_outline),
+                ),
+                validator: (String? value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter your name';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _emailController,
+                decoration: InputDecoration(
+                  labelText: 'Email',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  prefixIcon: const Icon(Icons.email_outlined),
+                ),
+                keyboardType: TextInputType.emailAddress,
+                validator: (String? value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter your email';
+                  }
+                  if (!value.contains('@')) {
+                    return 'Please enter a valid email';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton(
+                  onPressed: () {
+                    if (_formKey.currentState!.validate()) {
+                      context.read<UserData>().updateProfile(
+                            _nameController.text,
+                            _emailController.text,
+                          );
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                            content: Text('Profile updated successfully!')),
+                      );
+                      Navigator.pop(context); // Go back to profile page
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.cyan[600],
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text(
+                    'Save Changes',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _emailController.dispose();
+    super.dispose();
+  }
+}
